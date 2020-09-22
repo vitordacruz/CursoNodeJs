@@ -15,7 +15,7 @@ app.get("/clientes", (request, response) => {
 app.get("/clientes/:id", (request, response) => {
   const { id } = request.params;
 
-  const cliente = clientes.find((c) => c.id === +id);
+  const cliente = clientes.find((c) => c.id === id);
 
   if (cliente) {
     response.json(cliente);
@@ -47,7 +47,7 @@ app.put("/clientes/:id", (req, res) => {
 
   const { nome, email } = req.body;
 
-  const indice = clientes.findIndex((c) => c.id === +id);
+  const indice = clientes.findIndex((c) => c.id === id);
 
   if (indice >= 0) {
     const clienteCadastrado = clientes[indice];
@@ -68,7 +68,7 @@ app.put("/clientes/:id", (req, res) => {
 app.delete("/clientes/:id", (req, res) => {
   const { id } = req.params;
 
-  const indice = clientes.findIndex((c) => c.id === +id);
+  const indice = clientes.findIndex((c) => c.id === id);
 
   if (indice >= 0) {
     clientes.splice(indice, 1);
