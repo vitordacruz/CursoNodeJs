@@ -1,4 +1,5 @@
 const express = require("express");
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
 app.use(express.json());
@@ -27,14 +28,10 @@ app.get("/clientes/:id", (request, response) => {
 app.post("/clientes", (req, res) => {
   const { nome, email } = req.body;
 
-  const ids = clientes.map((c) => {
-    return c.id;
-  });
-
-  const maxId = clientes.length > 0 ? Math.max(...ids) : 0;
+  const newId = uuidv4();
 
   const novoCliente = {
-    id: maxId + 1,
+    id: newId,
     nome,
     email,
   };
