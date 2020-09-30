@@ -1,6 +1,13 @@
 const { v4: uuidv4 } = require("uuid");
+const Yup = require("yup");
+const BusinessException = require("../common/exceptions/BusinessException");
 
 const clientes = [];
+
+const validadorCreateUpdate = Yup.object().shape({
+  nome: Yup.string().min(4).required(),
+  email: Yup.string().email(),
+});
 
 class ClientesController {
   index(req, res) {
@@ -19,8 +26,19 @@ class ClientesController {
     }
   }
 
-  store(req, res) {
+  async store(req, res) {
+
+    await validadorCreateUpdate.validate(req.body, {
+      abortEarly: false,
+    });
+
     const { nome, email } = req.body;
+
+    const indice =  clientes.findIndex((c) => c.email == email);
+
+    if (indice >= 0) { 
+      throw new BusinessException("E-mail já utilizado", "CLI_ERR_01");
+    }
 
     const newId = uuidv4();
 
@@ -32,15 +50,26 @@ class ClientesController {
 
     clientes.push(novoCliente);
 
-    res.send();
+    res.sendStatus(201);
   }
 
-  update(req, res) {
+  async update(req, res) {
+
+    await validadorCreateUpdate.validate(req.body, {
+      abortEarly: false,
+    });
+
     const { id } = req.params;
 
     const { nome, email } = req.body;
 
     const indice = clientes.findIndex((c) => c.id === id);
+
+    const indiceEmail = clientes.findIndex((c) => c.email === email);
+
+    if (indiceEmail >= 0 && indice !== indiceEmail) {
+      throw new BusinessException('E-mail já em uso', "CLI_ERR_02");
+    }
 
     if (indice >= 0) {
       const clienteCadastrado = clientes[indice];

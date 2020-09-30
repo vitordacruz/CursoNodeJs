@@ -1,6 +1,14 @@
 const { v4: uuidv4 } = require("uuid");
+const Yup = require("yup");
+const BusinessException = require("../common/exceptions/BusinessException");
 
 const produtos = [];
+
+const validadorCreateUpdate = Yup.object().shape({
+    nome: Yup.string().min(4).required(),
+    preco: Yup.number().required().positive(),
+    quantidade: Yup.number().positive().required().integer(),
+  });
 
 class ProdutoController {
     index (req, res) {
@@ -20,7 +28,12 @@ class ProdutoController {
 
     }
     
-    store(req, res) {
+    async store(req, res) {
+
+        await validadorCreateUpdate.validate(req.body, {
+            abortEarly: false,
+          });
+
         const {nome, preco, quantidade} = req.body;
 
         if (isNaN(preco) || isNaN(quantidade)) {
@@ -41,14 +54,25 @@ class ProdutoController {
 
     }
 
-    update(req, res) {
+    async update(req, res) {
+
+        await validadorCreateUpdate.validate(req.body, {
+            abortEarly: false,
+        });
+
         const { id } = req.params;
 
         const {nome, preco, quantidade} = req.body;
 
+        console.log("id: ", id);
+
+        console.log(produtos);
+
         const indice = produtos.findIndex((prod) => prod.id === id);
 
-        if (indice) {
+        console.log(indice);
+
+        if (indice >= 0) {
 
             const produtoCadastrado = produtos[indice];
 
