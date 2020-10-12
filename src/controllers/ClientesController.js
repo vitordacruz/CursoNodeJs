@@ -1,57 +1,58 @@
 const { v4: uuidv4 } = require("uuid");
+const { Op } = require("sequelize");
 const Yup = require("yup");
+const Cliente = require("../entities/Cliente");
 const BusinessException = require("../common/exceptions/BusinessException");
-const db = require("../config/db");
 
-const validadorCreateUpdate = Yup.object().shape({
-  nome: Yup.string().min(4).required(),
+const validadorDeSchemaSaveOrUpdate = Yup.object().shape({
+  nome: Yup.string().min(6).required(),
   email: Yup.string().email(),
 });
 
 class ClientesController {
   async index(req, res) {
-
-    const result = await db.query("SELECT * FROM CLIENTES");
-
-    res.json(result.rows);
+    const result = await Cliente.findAll();
+    res.json(result);
   }
 
   async show(req, res) {
     const { id } = req.params;
 
-    const result = await db.query(`SELECT * FROM CLIENTES WHERE ID = '${id}'`);
+    const result = await Cliente.findByPk(id);
 
-    if (result.rowCount > 0) {
-      res.json(result.rows[0]);
+    if (result) {
+      res.json(result);
     } else {
       res.sendStatus(404);
     }
   }
 
   async store(req, res) {
-
-    await validadorCreateUpdate.validate(req.body, {
+    await validadorDeSchemaSaveOrUpdate.validate(req.body, {
       abortEarly: false,
     });
 
     const { nome, email } = req.body;
 
-    const result = await db.query(`SELECT COUNT(ID) FROM CLIENTES WHERE EMAIL = '${email}'`);
+    const countPorEmail = await Cliente.count({
+      where: {
+        email,
+      },
+    });
 
-    if (result.rows[0].count > 0) { 
-      throw new BusinessException("E-mail já utilizado", "CLI_ERR_01");
+    if (countPorEmail > 0) {
+      throw new BusinessException("E-mail já utilizado", "CLI_01");
     }
 
     const newId = uuidv4();
 
-    await db.query(`INSERT INTO CLIENTES(ID, NOME, EMAIL) VALUES('${newId}', '${nome}', '${email}')`);
+    await Cliente.create({ id: newId, nome, email });
 
-    res.sendStatus(201);
+    res.send();
   }
 
   async update(req, res) {
-
-    await validadorCreateUpdate.validate(req.body, {
+    await validadorDeSchemaSaveOrUpdate.validate(req.body, {
       abortEarly: false,
     });
 
@@ -59,24 +60,35 @@ class ClientesController {
 
     const { nome, email } = req.body;
 
-    const result = await db.query(`SELECT * FROM CLIENTES WHERE ID = '${id}'`);
+    const cliente = await Cliente.findByPk(id);
 
-    if (result.rowCount > 0) {
+    if (cliente) {
+      const countByEmailIdDiferente = await Cliente.count({
+        where: {
+          email,
+          id: {
+            [Op.ne]: id,
+          },
+        },
+      });
 
-      const resultClientePorEmail = await db.query(
-        `SELECT count(ID) FROM CLIENTES WHERE ID <> '${id}' AND EMAIL = '${email}'`
-      );
-
-      if (resultClientePorEmail.rows[0].count > 0) {
-        throw new BusinessException('E-mail já em uso', "CLI_ERR_02");
+      if (countByEmailIdDiferente > 0) {
+        throw new BusinessException("E-mail já utilizado", "CLI_01");
       }
 
-      await db.query(
-        `UPDATE CLIENTES SET NOME = '${nome}', EMAIL = '${email}' WHERE ID = '${id}'`
+      await Cliente.update(
+        {
+          email,
+          nome,
+        },
+        {
+          where: {
+            id,
+          },
+        }
       );
 
       res.send();
-
     } else {
       res.sendStatus(404);
     }
@@ -85,12 +97,11 @@ class ClientesController {
   async destroy(req, res) {
     const { id } = req.params;
 
-    const result = await db.query(
-      `SELECT COUNT(ID) AS qtd FROM CLIENTES WHERE ID = '${id}'`
-    );
+    const cliente = await Cliente.findByPk(id);
 
-    if (result.rows[0].qtd > 0) {
-      await db.query(`DELETE FROM CLIENTES WHERE ID = '${id}'`);
+    if (cliente) {
+      await cliente.destroy();
+
       res.send();
     } else {
       res.sendStatus(404);

@@ -1,96 +1,86 @@
 const { v4: uuidv4 } = require("uuid");
 const Yup = require("yup");
-const BusinessException = require("../common/exceptions/BusinessException");
-const db = require("../config/db");
+const Produto = require("../entities/Produto");
 
-const validadorCreateUpdate = Yup.object().shape({
-    nome: Yup.string().min(4).required(),
-    preco: Yup.number().required().positive(),
-    quantidade: Yup.number().positive().required().integer(),
-  });
+const validadorDeSchemaSaveOrUpdate = Yup.object().shape({
+  nome: Yup.string().required(),
+  descricao: Yup.string().min(6).required(),
+  valor: Yup.number().min(1).required(),
+});
 
-class ProdutoController {
-    async index (req, res) {
+class ProdutosController {
+  async index(req, res) {
+    const result = await Produto.findAll();
+    res.json(result);
+  }
 
-        const result = await db.query("SELECT * FROM PRODUTOS");
+  async show(req, res) {
+    const { id } = req.params;
 
-        res.json(result.rows);
+    const result = await Produto.findByPk(id);
+
+    if (result) {
+      res.json(result);
+    } else {
+      res.sendStatus(404);
     }
+  }
 
-    async show(req, res) {
-        const { id } = req.params;
+  async store(req, res) {
+    await validadorDeSchemaSaveOrUpdate.validate(req.body, {
+      abortEarly: false,
+    });
 
-        const result =  await db.query(`SELECT * FROM PRODUTOS WHERE ID = '${id}'`); 
-        
-        if (result.rowCount > 0) {
-            res.json(result.rows[0]);
-        } else {
-            res.sendStatus(404);
-        }
+    const { nome, descricao, valor } = req.body;
 
+    const newId = uuidv4();
+
+    await Produto.create({
+      id: newId,
+      nome,
+      descricao,
+      valor,
+    });
+
+    res.send();
+  }
+
+  async update(req, res) {
+    await validadorDeSchemaSaveOrUpdate.validate(req.body, {
+      abortEarly: false,
+    });
+
+    const { id } = req.params;
+
+    const produto = await Produto.findByPk(id);
+
+    if (produto) {
+      const { nome, descricao, valor } = req.body;
+
+      await produto.update({
+        nome,
+        descricao,
+        valor,
+      });
+
+      res.send();
+    } else {
+      res.sendStatus(404);
     }
-    
-    async store(req, res) {
+  }
 
-        await validadorCreateUpdate.validate(req.body, {
-            abortEarly: false,
-          });
+  async destroy(req, res) {
+    const { id } = req.params;
 
-        const {nome, preco, quantidade} = req.body;
+    const produto = await Produto.findByPk(id);
 
-        const id = uuidv4();
-
-        await db.query(`INSERT INTO PRODUTOS(ID, NOME, PRECO, QUANTIDADE) VALUES('${id}', '${nome}', ${preco}, ${quantidade})`);
-
-        const novoProduto = {
-            id,
-            nome,
-            preco,
-            quantidade
-        }
-
-        res.status(201).json(novoProduto);
-
+    if (produto) {
+      await produto.destroy();
+      res.send();
+    } else {
+      res.sendStatus(404);
     }
-
-    async update(req, res) {
-
-        await validadorCreateUpdate.validate(req.body, {
-            abortEarly: false,
-        });
-
-        const { id } = req.params;
-
-        const {nome, preco, quantidade} = req.body;
-
-        const result = await db.query(`SELECT COUNT(ID) FROM PRODUTOS WHERE ID = '${id}'`);
-
-        if (result.rows[0].count > 0) {
-
-            await db.query(`UPDATE PRODUTOS SET NOME = '${nome}', PRECO = ${preco}, QUANTIDADE = ${quantidade} WHERE ID = '${id}'`);
-
-            res.send();
-
-        } else {
-            res.sendStatus(404);
-        }
-    }
-
-    async destroy(req, res) {
-        const { id } = req.params;        
-
-        const result = await db.query(`SELECT COUNT(ID) FROM PRODUTOS WHERE ID = '${id}'`);
-
-        if (result.rows[0].count > 0) {
-            
-            await db.query(`DELETE FROM PRODUTOS WHERE ID = '${id}'`);
-
-            res.send();
-
-        } else {
-            res.sendStatus(404);
-        }
-    }
+  }
 }
 
-module.exports = new ProdutoController();
+module.exports = new ProdutosController();
